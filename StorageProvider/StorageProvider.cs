@@ -1,6 +1,7 @@
 ﻿// from https://msdn.microsoft.com/en-us/library/dn727071(v=vs.85).aspx
 using Google.Apis.Services;
 using Google.Apis.Storage.v1;
+using Google.Storage.V1;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -53,7 +54,7 @@ namespace StorageProvider {
       var projectId = "firm-site-126023";
 
       // TODO: put client and projectId into properties that do the right thing
-      var client = Google.Storage.V1.StorageClient.FromApplicationCredentials("PowerShell-StorageProvider").Result;
+      var client = StorageClient.Create();
       foreach (var bucket in client.ListBuckets(projectId)) { WriteItemObject(bucket, $"gcs:/{bucket.Name}", true); }
 
       //var client = CreateStorageClient();
