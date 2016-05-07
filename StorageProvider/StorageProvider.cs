@@ -15,21 +15,6 @@ using System.Threading.Tasks;
 namespace StorageProvider {
   [CmdletProvider("GoogleStorageProvider", ProviderCapabilities.None)]
   public class StorageProvider : ContainerCmdletProvider {
-    //public StorageService CreateStorageClient() {
-    //  var credentials = Google.Apis.Auth.OAuth2.GoogleCredential.GetApplicationDefaultAsync().Result;
-
-    //  if (credentials.IsCreateScopedRequired) {
-    //    credentials = credentials.CreateScoped(new[] { StorageService.Scope.DevstorageFullControl });
-    //  }
-
-    //  var serviceInitializer = new BaseClientService.Initializer() {
-    //    ApplicationName = "Google Cloud Storage PowerShell Provider",
-    //    HttpClientInitializer = credentials
-    //  };
-
-    //  return new StorageService(serviceInitializer);
-    //}
-
     protected override Collection<PSDriveInfo> InitializeDefaultDrives() {
       return new Collection<PSDriveInfo> { new PSDriveInfo("GCS", ProviderInfo, "", "Provider for Google Cloud Storage", null) };
     }
