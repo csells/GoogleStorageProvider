@@ -10,14 +10,19 @@ using System.Management.Automation.Provider;
 
 namespace StorageProvider {
   [CmdletProvider("GoogleStorageProvider", ProviderCapabilities.None)]
-  public class StorageProvider : ContainerCmdletProvider {
+  public class StorageProvider : NavigationCmdletProvider {
     protected override Collection<PSDriveInfo> InitializeDefaultDrives() {
       return new Collection<PSDriveInfo> { new PSDriveInfo("GCS", ProviderInfo, "", "Provider for Google Cloud Storage", null) };
     }
 
     protected override bool IsValidPath(string path) {
       Debug.WriteLine($"IsValidPath: path= {path}");
-      throw new NotImplementedException("IsValidPath");
+      StoragePath.Parse(path);
+      return true;
+    }
+
+    protected override bool IsItemContainer(string path) {
+      return StoragePath.Parse(path).Type != StoragePathType.File;
     }
 
     // dir gcs:/
@@ -72,31 +77,35 @@ namespace StorageProvider {
       var spath = StoragePath.Parse(path);
 
       // TODO: support for globs
-      foreach (var projectId in GCloud.ListProjects().Select(p => p.projectId)) {
-        switch (spath.Type) {
-          // list the buckets
-          case StoragePathType.Empty:
+      switch (spath.Type) {
+        // list the buckets
+        case StoragePathType.Empty:
+          foreach (var projectId in GCloud.ListProjects().Select(p => p.projectId)) {
             foreach (var bucket in client.ListBuckets(projectId)) {
               WriteItemObject(bucket, StoragePath.Parse(bucket.Name).FullName, true);
             }
-            break;
+          }
+          break;
 
-          case StoragePathType.Bucket:
-          case StoragePathType.Folder:
-            // list files
-            foreach (var file in client.ListFiles(spath.Bucket, spath.Folder)) {
-              WriteItemObject(file, StoragePath.Parse(spath.Bucket, file.Name).FullName, false);
-            }
+        case StoragePathType.Bucket:
+        case StoragePathType.Folder:
+          // list files
+          foreach (var file in client.ListFiles(spath.Bucket, spath.Folder)) {
+            WriteItemObject(file, StoragePath.Parse(spath.Bucket, file.Name).FullName, false);
+          }
 
-            // TODO: list folders (including implicit folders)
-            break;
+          // list folders (TODO: implicit folders)
+          foreach( var folderName in client.ListFolders(spath.Bucket, spath.Folder)) {
+            var folder = client.TryGetObject(spath.Bucket, folderName);
+            if( folder != null) { WriteItemObject(folder, StoragePath.Parse(spath.Bucket, folderName).FullName, true); }
+          }
+          break;
 
-          case StoragePathType.File:
-            throw new NotImplementedException("GetChildItems: StoragePathType.File -- files don't have children");
+        case StoragePathType.File:
+          throw new NotImplementedException("GetChildItems: StoragePathType.File -- files don't have children");
 
-          default:
-            throw new Exception($"Unknown StoragePathType: {spath.Type}");
-        }
+        default:
+          throw new Exception($"Unknown StoragePathType: {spath.Type}");
       }
 
     }

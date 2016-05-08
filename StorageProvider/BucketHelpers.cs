@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -64,6 +65,15 @@ namespace Google.Storage.V1.Demo {
       return client
         .ListObjects(bucket, prefix, new ListObjectsOptions { Delimiter = Delimiter.ToString() })
         .Where(o => !o.Name.EndsWith(Delimiter.ToString()));
+    }
+
+    public static Google.Apis.Storage.v1.Data.Object TryGetObject(this StorageClient client, string bucket, string objectName) {
+      if (client == null) { throw new ArgumentNullException("this"); }
+      try { return client.GetObject(bucket, objectName); }
+      catch (Exception ex) {
+        Debug.WriteLine(ex.GetType().Name);
+        throw;
+      }
     }
 
     /// <summary>
