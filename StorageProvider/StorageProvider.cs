@@ -1,16 +1,12 @@
 ﻿// from https://msdn.microsoft.com/en-us/library/dn727071(v=vs.85).aspx
-using Google.Apis.Services;
-using Google.Apis.Storage.v1;
 using Google.Storage.V1;
+using Google.Storage.V1.Demo;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Provider;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace StorageProvider {
   [CmdletProvider("GoogleStorageProvider", ProviderCapabilities.None)]
@@ -28,23 +24,83 @@ namespace StorageProvider {
     // dir gcs:\
     protected override bool ItemExists(string path) {
       Debug.WriteLine($"ItemExists: path= {path}");
-      if (path == "") { return true; }
-      return base.ItemExists(path);
+      var spath = StoragePath.Parse(path);
+      // TODO: check if the object exists (could be an implicit folder) and cache results
+      return true;
     }
 
-    // dir gcs:/
-    // dir gcs:\
+    protected override void GetItem(string path) {
+      Debug.WriteLine($"GetItem: path= {path}");
+      var spath = StoragePath.Parse(path);
+      var client = StorageClient.Create();
+
+      switch (spath.Type) {
+        case StoragePathType.Empty:
+          WriteItemObject(this, spath.FullName, true);
+          break;
+
+        case StoragePathType.Bucket:
+          var bucket = client.Service.Buckets.Get(spath.Bucket).Execute();
+          WriteItemObject(bucket, spath.FullName, true);
+          break;
+
+        case StoragePathType.Folder:
+          // TODO: handle implicit folders
+          var folder = client.GetObject(spath.Bucket, spath.StorageObjectName);
+          WriteItemObject(folder, spath.FullName, true);
+          break;
+
+        case StoragePathType.File:
+          var file = client.GetObject(spath.Bucket, spath.StorageObjectName);
+          WriteItemObject(file, spath.FullName, false);
+          break;
+
+        default:
+          throw new Exception($"Unknown StoragePathType: {spath.Type}");
+      }
+    }
+
+    // ls gcs:
+    // ls gcs:/
+    // ls gcs:\
+    // ls gcs:/bucket
+    // ls gcs:/bucket/
     protected override void GetChildItems(string path, bool recurse) {
       Debug.WriteLine($"GetChildItems: path= {path}, recurse= {recurse}");
-      var projectId = "firm-site-126023";
 
-      // TODO: put client and projectId into properties that do the right thing
       var client = StorageClient.Create();
-      foreach (var bucket in client.ListBuckets(projectId)) { WriteItemObject(bucket, $"gcs:/{bucket.Name}", true); }
+      var spath = StoragePath.Parse(path);
 
-      //var client = CreateStorageClient();
-      //foreach( var bucket in client.Buckets.List(projectId).Execute().Items ) { WriteItemObject(bucket, $"gcs:/{bucket.Name}", true); }
+      // TODO: support for globs
+      foreach (var projectId in GCloud.ListProjects().Select(p => p.projectId)) {
+        switch (spath.Type) {
+          // list the buckets
+          case StoragePathType.Empty:
+            foreach (var bucket in client.ListBuckets(projectId)) {
+              WriteItemObject(bucket, StoragePath.Parse(bucket.Name).FullName, true);
+            }
+            break;
+
+          case StoragePathType.Bucket:
+          case StoragePathType.Folder:
+            // list files
+            foreach (var file in client.ListFiles(spath.Bucket, spath.Folder)) {
+              WriteItemObject(file, StoragePath.Parse(spath.Bucket, file.Name).FullName, false);
+            }
+
+            // TODO: list folders (including implicit folders)
+            break;
+
+          case StoragePathType.File:
+            throw new NotImplementedException("GetChildItems: StoragePathType.File -- files don't have children");
+
+          default:
+            throw new Exception($"Unknown StoragePathType: {spath.Type}");
+        }
+      }
+
     }
 
   }
+
 }

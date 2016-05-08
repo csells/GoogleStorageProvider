@@ -88,6 +88,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BucketHelpers.cs" />
+    <Compile Include="Gcloud.cs" />
+    <Compile Include="StoragePath.cs" />
     <Compile Include="StorageProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
